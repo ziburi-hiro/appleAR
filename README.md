@@ -40,7 +40,7 @@ When [`UITapGestureRecognizer`][14] detects a tap on the screen, the [`handleSce
 
 An [`ARWorldMap`][0] object contains a snapshot of all the spatial mapping information that ARKit uses to locate the user's device in real-world space. To save a map that can reliably be used for restoring your AR session later, you'll first need to find a good time to capture the map. 
 
-ARKit provides a [`worldMappingStatus`][30] value that indicates whether it's currently a good time to capture a world map (or if it's better to wait until ARKit has mapped more of the local environment). This app uses mapping status to provide visual feedback and choose when to make the Save Experience button available:
+ARKit provides a [`worldMappingStatus`][30] value that indicates whether it's currently a good time to capture a world map (or if it's better to wait until ARKit has mapped more of the local environment). This app uses that value to provide visual feedback and choose when to make the Save Experience button available:
 
 ``` swift
 // Enable Save button only when the mapping status is good and an object has been placed
@@ -57,13 +57,6 @@ Tracking: \(frame.camera.trackingState.description)
 """
 ```
 [View in Source](x-source-tag://CheckMappingStatus)
-
-- Note: Prefer to capture a world map when the status is [`mapped`][20] for the best reliability in restoring the saved session. If `mapped` status is difficult to obtain, a map captured with [`extending`][21] status provides a less reliable fallback.
-
-[20]:https://developer.apple.com/documentation/arkit/arframe/worldmappingstatus/mapped
-[21]:https://developer.apple.com/documentation/arkit/arframe/worldmappingstatus/extending
-
-
 
 When the user taps the Save Experience button, the app calls [`getCurrentWorldMap`][31] to capture the map from the running ARSession, then serializes it to a [`Data`][32] object with [`NSKeyedArchiver`][33] and writes it to local storage:
 
@@ -149,7 +142,7 @@ func renderer(_ renderer: SCNSceneRenderer, didAdd node: SCNNode, for anchor: AR
 In your own AR experience, you can choose among various techniques for restoring virtual content associated with saved anchors. For example:
 
 - An app for visualizing furniture from a fixed catalog might save an identifier for each placed object in the corresponding anchor's [`name`][50], then use that identifier to determine which 3D model to display when resuming a session from a saved map.
-- A game that places virtual characters to play in the user's environment might create various custom [`ARAnchor`][15] subclasses to store gameplay data specific to each character, so that resuming a session from a saved map also restores the state of the game. (See [`ARAnchor`][15] Subclassing Notes and `ARAnchorCopying`][51].)
+- A game that places virtual characters to play in the user's environment might create various custom [`ARAnchor`][15] subclasses to store gameplay data specific to each character, so that resuming a session from a saved map also restores the state of the game. (See [`ARAnchor`][15] Subclassing Notes and [`ARAnchorCopying`][51].)
 
 [50]:https://developer.apple.com/documentation/arkit/aranchor/2873672-name
 [51]:https://developer.apple.com/documentation/arkit/aranchorcopying
