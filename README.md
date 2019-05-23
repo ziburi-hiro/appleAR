@@ -1,9 +1,8 @@
-# Creating a Persistent AR Experience
+# Saving and Loading World Data
 
-Save and load ARKit world-mapping data to allow users to return to previous AR experiences in the same real-world environment.
+Serialize a world tracking session to resume it later on.
 
 ## Overview
-
 
 This sample app demonstrates a simple AR experience for iOS 12 devices. Before exploring the code, try building and running the app to familiarize yourself with the user experience it demonstrates:
 
@@ -27,7 +26,7 @@ This app extends the basic workflow for building an ARKit app. (For details, see
 
 When [`UITapGestureRecognizer`][14] detects a tap on the screen, the [`handleSceneTap`](x-source-tag://PlaceObject) method uses ARKit hit-testing to find a 3D point on a real-world surface, then places an [`ARAnchor`][15] marking that position. When ARKit calls the delegate method [`renderer(_:didAdd:for:)`][16], the app loads a 3D model for [`ARSCNView`][13] to display at the anchor's position.
 
-[10]:https://developer.apple.com/documentation/arkit/building_your_first_ar_experience
+[10]:https://developer.apple.com/documentation/arkit/tracking_and_visualizing_planes
 [11]:https://developer.apple.com/documentation/arkit/arworldtrackingconfiguration
 [12]:https://developer.apple.com/documentation/arkit/arsession
 [13]:https://developer.apple.com/documentation/arkit/arscnview
