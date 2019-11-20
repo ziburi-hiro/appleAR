@@ -19,6 +19,11 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
     @IBOutlet weak var loadExperienceButton: UIButton!
     @IBOutlet weak var statusLabel: UILabel!
     @IBOutlet weak var snapshotThumbnail: UIImageView!
+    @IBOutlet weak var StartNavigation: UIButton!
+    @IBOutlet weak var StopNavigation: UIButton!
+    
+    var anchorlocation = CGPoint(x: 188, y: 500)
+    var timer: Timer?
     
     // MARK: - View Life Cycle
     
@@ -33,6 +38,37 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         // Read in any already saved map to see if we can load one.
         if mapDataFromFile != nil {
             self.loadExperienceButton.isHidden = false
+        }
+        
+        sceneView.autoenablesDefaultLighting = true
+        
+        //Button Layout setting
+        StartNavigation.layer.cornerRadius = 10.0
+        StartNavigation.backgroundColor = UIColor(red: 0/255, green: 100/255, blue: 255/255, alpha: 1.0)
+        StartNavigation.setTitleColor(UIColor.white, for: UIControl.State.normal)
+        StartNavigation.setTitle("Start Making Navigation", for: UIControl.State.normal)
+        
+        StopNavigation.layer.cornerRadius = 10.0
+        StopNavigation.backgroundColor = UIColor(red: 255/255, green: 100/255, blue: 0/255, alpha: 1.0)
+        StopNavigation.setTitleColor(UIColor.white, for: UIControl.State.normal)
+        StopNavigation.setTitle("Stop Making Navigation", for: UIControl.State.normal)
+        
+        if #available(iOS 13.0, *) {
+            let coachingOverlay = ARCoachingOverlayView()
+
+            coachingOverlay.session = sceneView.session
+            coachingOverlay.translatesAutoresizingMaskIntoConstraints = false
+            coachingOverlay.activatesAutomatically = true
+            coachingOverlay.goal = .horizontalPlane
+            sceneView.addSubview(coachingOverlay)
+
+            //画面中央に表示
+            NSLayoutConstraint.activate([
+                coachingOverlay.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                coachingOverlay.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+                coachingOverlay.widthAnchor.constraint(equalTo: view.widthAnchor),
+                coachingOverlay.heightAnchor.constraint(equalTo: view.heightAnchor)
+            ])
         }
     }
     
@@ -74,14 +110,45 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
     
     /// - Tag: RestoreVirtualContent
     func renderer(_ renderer: SCNSceneRenderer, didAdd node: SCNNode, for anchor: ARAnchor) {
+        if anchor.name == "Text"{
+            let textGeometry = SCNText(string: "⬆︎", extrusionDepth: 1)
+            let textnode = SCNNode(geometry: textGeometry)
+            textnode.scale = SCNVector3(0.05,0.05,0.05)
+            guard let camera = self.sceneView.pointOfView else {
+                return
+            }
+            let cameraPos = SCNVector3Make(-0.1, -0.1, -0.5)
+            let position = camera.convertPosition(cameraPos, to: nil)
+            textnode.position = position
+//            self.sceneView.scene.rootNode.addChildNode(textnode)
+            node.addChildNode(textnode)
+            Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true, block: {_ in
+                if let camera = self.sceneView.pointOfView{
+                    textnode.eulerAngles = camera.eulerAngles
+                }
+            })
+        }
         guard anchor.name == virtualObjectAnchorName
             else { return }
-        
+
         // save the reference to the virtual object anchor when the anchor is added from relocalizing
         if virtualObjectAnchor == nil {
             virtualObjectAnchor = anchor
         }
         node.addChildNode(virtualObject)
+        
+    }
+    
+    
+    private func showOKDialog(title: String, message: String? = nil, ok: String = "OK", completion: (() -> Void)? = nil){
+        DispatchQueue.main.async {
+            let alert: UIAlertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
+            let defaultAction = UIAlertAction(title: ok, style: .default, handler: { _ in
+                completion?()
+            })
+            alert.addAction(defaultAction)
+            self.present(alert, animated: true, completion: nil)
+        }
     }
     
     // MARK: - ARSessionDelegate
@@ -95,8 +162,7 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         // Enable Save button only when the mapping status is good and an object has been placed
         switch frame.worldMappingStatus {
         case .extending, .mapped:
-            saveExperienceButton.isEnabled =
-                virtualObjectAnchor != nil && frame.anchors.contains(virtualObjectAnchor!)
+            saveExperienceButton.isEnabled = true
         default:
             saveExperienceButton.isEnabled = false
         }
@@ -163,6 +229,38 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         }
     }()
     
+    /// - Tag:Making Navigation
+    
+    //automatic make navi
+    @IBAction func StartNavi(_ button: UIButton) {
+        
+//        sceneView.session.getCurrentWorldMap { worldMap, error in
+//            guard let map1 = worldMap
+//                else { self.showAlert(title: "Can't get current world map", message: error!.localizedDescription); return }
+//
+//            guard let snapshotAnchor = SnapshotAnchor(capturing: self.sceneView)
+//                else { fatalError("Can't take snapshot") }
+//            map1.anchors.append(snapshotAnchor)
+//            print("aaa")
+//        }
+        self.showOKDialog(title: "Start Making Navigation")
+        self.timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true, block: {_ in
+            guard let hitTestResult = self.sceneView
+                .hitTest(self.anchorlocation, types: [.existingPlaneUsingGeometry, .estimatedHorizontalPlane])
+                .first else {
+                    return
+            }
+            // anchorを設置
+            let TextAnchor = ARAnchor(name: "Text", transform: hitTestResult.worldTransform)
+            self.sceneView.session.add(anchor: TextAnchor)
+        })
+        
+    }
+    
+    @IBAction func StopNavi(_ button: UIButton) {
+        self.showOKDialog(title: "Stop Making Navigation")
+        self.timer?.invalidate()
+    }
     /// - Tag: GetWorldMap
     @IBAction func saveExperience(_ button: UIButton) {
         sceneView.session.getCurrentWorldMap { worldMap, error in
@@ -177,12 +275,14 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
             do {
                 let data = try NSKeyedArchiver.archivedData(withRootObject: map, requiringSecureCoding: true)
                 try data.write(to: self.mapSaveURL, options: [.atomic])
+                self.showOKDialog(title: "SaveExperience")
                 DispatchQueue.main.async {
                     self.loadExperienceButton.isHidden = false
                     self.loadExperienceButton.isEnabled = true
                 }
             } catch {
                 fatalError("Can't save map: \(error.localizedDescription)")
+                self.showOKDialog(title: error.localizedDescription)
             }
         }
     }
@@ -194,7 +294,7 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
     
     /// - Tag: RunWithWorldMap
     @IBAction func loadExperience(_ button: UIButton) {
-        
+        self.showOKDialog(title: "LoadExperience")
         /// - Tag: ReadWorldMap
         let worldMap: ARWorldMap = {
             guard let data = mapDataFromFile
@@ -255,7 +355,7 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
                 // User has placed an object in scene and the session is mapped, prompt them to save the experience
                 message = "Tap 'Save Experience' to save the current map."
             } else {
-                message = "Tap on the screen to place an object."
+                message = "Tap 'Start Makeing Navigation' to place an object."
             }
             
         case (.normal, _) where mapDataFromFile != nil && !isRelocalizingMap:
@@ -289,7 +389,7 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
             .hitTest(sender.location(in: sceneView), types: [.existingPlaneUsingGeometry, .estimatedHorizontalPlane])
             .first
             else { return }
-        
+
         // Remove exisitng anchor and add new anchor
         if let existingAnchor = virtualObjectAnchor {
             sceneView.session.remove(anchor: existingAnchor)
@@ -307,7 +407,7 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
                 fatalError("can't load virtual object")
         }
         referenceNode.load()
-        
+
         return referenceNode
     }()
     
